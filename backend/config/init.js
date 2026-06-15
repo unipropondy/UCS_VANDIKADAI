@@ -166,6 +166,10 @@ async function initDB(pool) {
     await runQuery("RestaurantOrderDetailCur - isTakeAway", "IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[RestaurantOrderDetailCur]') AND name = 'isTakeAway') ALTER TABLE [dbo].[RestaurantOrderDetailCur] ADD isTakeAway BIT DEFAULT 0");
 
     await runQuery("TableMaster - CurrentOrderId", "IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[TableMaster]') AND name = 'CurrentOrderId') ALTER TABLE [dbo].[TableMaster] ADD CurrentOrderId NVARCHAR(100)");
+    await runQuery("TableMaster - entry_status", "IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[TableMaster]') AND name = 'entry_status') ALTER TABLE [dbo].[TableMaster] ADD entry_status VARCHAR(50) NULL");
+    await runQuery("TableMaster - CustomerName", "IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[TableMaster]') AND name = 'CustomerName') ALTER TABLE [dbo].[TableMaster] ADD CustomerName NVARCHAR(100) NULL");
+    await runQuery("TableMaster - Pax", "IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[TableMaster]') AND name = 'Pax') ALTER TABLE [dbo].[TableMaster] ADD Pax INT NULL");
+    await runQuery("TableMaster - PAYMENT_STATUS", "IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[TableMaster]') AND name = 'PAYMENT_STATUS') ALTER TABLE [dbo].[TableMaster] ADD PAYMENT_STATUS INT NULL");
 
     await runQuery("Create OrderSequences", `
       IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[OrderSequences]') AND type in (N'U'))
