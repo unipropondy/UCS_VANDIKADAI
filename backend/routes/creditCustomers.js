@@ -497,36 +497,33 @@ router.get("/receivables/dashboard", async (req, res) => {
       FROM CustomerCreditTransactions tx
       WHERE tx.TransactionType IN ('CREDIT_SALE', 'ADJUSTMENT') 
         AND tx.Status IN ('OPEN', 'PARTIAL')
-        AND (
-          EXISTS (SELECT 1 FROM CreditCustomerMaster m WHERE tx.MemberId = m.CustomerId AND m.IsActive = 1)
-          OR EXISTS (SELECT 1 FROM MemberMaster m2 WHERE tx.MemberId = m2.MemberId AND m2.IsActive = 1)
-        )
+        AND EXISTS (SELECT 1 FROM CreditCustomerMaster m WHERE tx.MemberId = m.CustomerId AND m.IsActive = 1)
     `);
     
     // Total Customers with Credit
     const custCountRes = await pool.request().query(`
-      SELECT (
-        SELECT COUNT(*) FROM CreditCustomerMaster WHERE CurrentBalance > 0.01 AND IsActive = 1
-      ) + (
-        SELECT COUNT(*) FROM MemberMaster WHERE CurrentBalance > 0.01 AND IsActive = 1
-      ) AS CreditCustomerCount
+      SELECT COUNT(*) AS CreditCustomerCount 
+      FROM CreditCustomerMaster 
+      WHERE CurrentBalance > 0.01 AND IsActive = 1
     `);
     
     // Collections Today & This Month
     const collRes = await pool.request().query(`
       SELECT 
-        ISNULL(SUM(CASE WHEN CreatedDate >= CAST(GETDATE() AS DATE) THEN PaidAmount ELSE 0 END), 0) AS CollectionsToday,
-        ISNULL(SUM(CASE WHEN CreatedDate >= DATEADD(month, DATEDIFF(month, 0, GETDATE()), 0) THEN PaidAmount ELSE 0 END), 0) AS CollectionsThisMonth
-      FROM CustomerCreditTransactions
-      WHERE TransactionType = 'PAYMENT'
+        ISNULL(SUM(CASE WHEN tx.CreatedDate >= CAST(GETDATE() AS DATE) THEN tx.PaidAmount ELSE 0 END), 0) AS CollectionsToday,
+        ISNULL(SUM(CASE WHEN tx.CreatedDate >= DATEADD(month, DATEDIFF(month, 0, GETDATE()), 0) THEN tx.PaidAmount ELSE 0 END), 0) AS CollectionsThisMonth
+      FROM CustomerCreditTransactions tx
+      JOIN CreditCustomerMaster c ON tx.MemberId = c.CustomerId
+      WHERE tx.TransactionType = 'PAYMENT'
     `);
 
     // Total Credit sales and Total payments collected
     const creditStatsRes = await pool.request().query(`
       SELECT 
-        ISNULL(SUM(CASE WHEN TransactionType IN ('CREDIT_SALE', 'ADJUSTMENT') THEN BillAmount ELSE 0 END), 0) AS TotalCredit,
-        ISNULL(SUM(CASE WHEN TransactionType = 'PAYMENT' THEN PaidAmount ELSE 0 END), 0) AS TotalPaid
-      FROM CustomerCreditTransactions
+        ISNULL(SUM(CASE WHEN tx.TransactionType IN ('CREDIT_SALE', 'ADJUSTMENT') THEN tx.BillAmount ELSE 0 END), 0) AS TotalCredit,
+        ISNULL(SUM(CASE WHEN tx.TransactionType = 'PAYMENT' THEN tx.PaidAmount ELSE 0 END), 0) AS TotalPaid
+      FROM CustomerCreditTransactions tx
+      JOIN CreditCustomerMaster c ON tx.MemberId = c.CustomerId
     `);
     
     res.json({
@@ -546,7 +543,7 @@ router.get("/receivables/dashboard", async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
-
+ 
 /* ================= AGING REPORT ================= */
 router.get("/receivables/aging", async (req, res) => {
   try {
@@ -555,8 +552,6 @@ router.get("/receivables/aging", async (req, res) => {
     const query = `
       WITH Customers AS (
         SELECT CustomerId AS MemberId, Name, Phone, IsActive, 'CREDIT' AS CustomerType FROM CreditCustomerMaster
-        UNION ALL
-        SELECT MemberId, Name, Phone, IsActive, 'MEMBER' AS CustomerType FROM MemberMaster
       ),
       BillBalances AS (
         SELECT 
@@ -615,7 +610,7 @@ router.get("/receivables/aging", async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
-
+ 
 /* ================= ALLOCATIONS FOR A PAYMENT ================= */
 router.get("/payment-allocations/:paymentTransactionId", async (req, res) => {
   try {
@@ -644,7 +639,7 @@ router.get("/payment-allocations/:paymentTransactionId", async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
-
+ 
 /* ================= SETTLEMENTS FOR AN INVOICE ================= */
 router.get("/invoice-settlements/:invoiceTransactionId", async (req, res) => {
   try {
@@ -673,7 +668,7 @@ router.get("/invoice-settlements/:invoiceTransactionId", async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
-
+ 
 /* ================= RECENT COLLECTIONS ================= */
 router.get("/receivables/recent-collections", async (req, res) => {
   try {
@@ -688,12 +683,11 @@ router.get("/receivables/recent-collections", async (req, res) => {
         tx.ReferenceNo,
         tx.Remarks,
         CONVERT(VARCHAR, tx.CreatedDate, 126) + '+08:00' AS CreatedDate,
-        COALESCE(c.Name, m.Name) AS CustomerName,
-        COALESCE(c.Phone, m.Phone) AS CustomerPhone,
-        CASE WHEN c.CustomerId IS NOT NULL THEN 'CREDIT' ELSE 'MEMBER' END AS CustomerType
+        c.Name AS CustomerName,
+        c.Phone AS CustomerPhone,
+        'CREDIT' AS CustomerType
       FROM CustomerCreditTransactions tx
-      LEFT JOIN CreditCustomerMaster c ON tx.MemberId = c.CustomerId
-      LEFT JOIN MemberMaster m ON tx.MemberId = m.MemberId
+      JOIN CreditCustomerMaster c ON tx.MemberId = c.CustomerId
       WHERE tx.TransactionType = 'PAYMENT'
       ORDER BY tx.CreatedDate DESC
     `);
@@ -703,5 +697,5 @@ router.get("/receivables/recent-collections", async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
-
+ 
 module.exports = router;
