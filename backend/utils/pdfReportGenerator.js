@@ -817,6 +817,60 @@ const generateSalesReportPdf = async (reportData) => {
     margin: [0, 0, 0, 14]
   });
 
+  // ── Net Collection Breakdown ──────────────────────────────────────────────
+  content.push(sectionHeader('NET COLLECTION BREAKDOWN'));
+
+  const breakdownRows = [
+    ['Cash Sales', paymentBreakdown.CASH || paymentBreakdown.Cash || 0],
+    ['Card Sales', paymentBreakdown.CARD || paymentBreakdown.Card || 0]
+  ];
+
+  // Other paymodes (NETS, PayNow, UPI, etc.)
+  paymodeList.forEach(pm => {
+    if (pm.key !== 'CASH' && pm.key !== 'CARD' && pm.key !== 'MEMBER' && pm.key !== 'CREDIT' && pm.val > 0) {
+      breakdownRows.push([`${pm.label} Sales`, pm.val]);
+    }
+  });
+
+  breakdownRows.push(['Member Collections', memberPaymentsCollected || 0]);
+  breakdownRows.push(['Credit Collections', creditPaymentsCollected || 0]);
+
+  const breakdownTableBody = [
+    [
+      { text: 'Collection Source', fontSize: 7, bold: true, color: T.white, fillColor: T.orange, margin: [4, 3, 0, 3], border: [false, false, false, false] },
+      { text: 'Amount', fontSize: 7, bold: true, color: T.white, fillColor: T.orange, alignment: 'right', margin: [0, 3, 4, 3], border: [false, false, false, false] }
+    ]
+  ];
+
+  breakdownRows.forEach((row, i) => {
+    const bg = i % 2 === 0 ? T.white : T.slate100;
+    breakdownTableBody.push([
+      { text: row[0], fontSize: 7, color: T.slate700, fillColor: bg, border: [false, false, false, false], margin: [4, 3, 0, 3] },
+      { text: fmt(row[1]), fontSize: 7, bold: true, alignment: 'right', color: T.slate900, fillColor: bg, border: [false, false, false, false], margin: [0, 3, 4, 3] }
+    ]);
+  });
+
+  // Total row
+  breakdownTableBody.push([
+    { text: 'NET COLLECTIONS (TOTAL)', fontSize: 7.5, bold: true, color: T.orange, fillColor: T.orangeLight, margin: [4, 3, 0, 3], border: [false, true, false, false], borderColor: [null, T.orangeBorder, null, null] },
+    { text: fmt(totalCollections), fontSize: 7.5, bold: true, color: T.orange, alignment: 'right', fillColor: T.orangeLight, border: [false, true, false, false], borderColor: [null, T.orangeBorder, null, null], margin: [0, 3, 4, 3] }
+  ]);
+
+  content.push({
+    table: {
+      widths: ['*', 100],
+      body: breakdownTableBody
+    },
+    layout: {
+      hLineWidth: (i, node) => (i === 0 || i === node.table.body.length) ? 1 : 0.5,
+      vLineWidth: () => 0,
+      hLineColor: () => T.slate200,
+      paddingLeft: () => 0, paddingRight: () => 0,
+      paddingTop: () => 0, paddingBottom: () => 0,
+    },
+    margin: [0, 0, 0, 14]
+  });
+
   // Target Achievement section removed (dish names were appearing instead of staff names)
 
   // ── Page 2 Footer ─────────────────────────────────────────────────────────

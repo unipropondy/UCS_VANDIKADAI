@@ -473,8 +473,13 @@ export default function SalesReport() {
         start.setDate(start.getDate() - 6);
       } else if (selectedFilter === "MONTHLY") {
         start.setDate(1);
-        end.setMonth(end.getMonth() + 1);
-        end.setDate(0);
+        const today = new Date();
+        const endOfMonth = new Date(end.getFullYear(), end.getMonth() + 1, 0);
+        if (endOfMonth > today) {
+          end.setTime(today.getTime());
+        } else {
+          end.setTime(endOfMonth.getTime());
+        }
       } else if (selectedFilter === "YEARLY") {
         start.setFullYear(start.getFullYear() - 1);
       } else if (selectedFilter === "CUSTOM" && rangeStart && rangeEnd) {
@@ -514,8 +519,13 @@ export default function SalesReport() {
         start.setDate(start.getDate() - 6);
       } else if (selectedFilter === "MONTHLY") {
         start.setDate(1);
-        end.setMonth(end.getMonth() + 1);
-        end.setDate(0);
+        const today = new Date();
+        const endOfMonth = new Date(end.getFullYear(), end.getMonth() + 1, 0);
+        if (endOfMonth > today) {
+          end.setTime(today.getTime());
+        } else {
+          end.setTime(endOfMonth.getTime());
+        }
       } else if (selectedFilter === "YEARLY") {
         start.setFullYear(start.getFullYear() - 1);
       } else if (selectedFilter === "CUSTOM" && rangeStart && rangeEnd) {
@@ -543,8 +553,13 @@ export default function SalesReport() {
       startObj.setDate(startObj.getDate() - 6);
     } else if (downloadFilter === "MONTHLY") {
       startObj.setDate(1);
-      endObj.setMonth(endObj.getMonth() + 1);
-      endObj.setDate(0);
+      const today = new Date();
+      const endOfMonth = new Date(endObj.getFullYear(), endObj.getMonth() + 1, 0);
+      if (endOfMonth > today) {
+        endObj.setTime(today.getTime());
+      } else {
+        endObj.setTime(endOfMonth.getTime());
+      }
     } else if (downloadFilter === "YEARLY") {
       startObj.setFullYear(startObj.getFullYear() - 1);
     } else if (downloadFilter === "CUSTOM" && downloadRangeStart && downloadRangeEnd) {
