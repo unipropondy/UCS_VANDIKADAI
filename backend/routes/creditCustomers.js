@@ -301,8 +301,12 @@ router.post("/pay", async (req, res) => {
     if (req.body.allocations && Array.isArray(req.body.allocations) && req.body.allocations.length > 0) {
       // Manual Allocation
       for (const alloc of req.body.allocations) {
-        const allocAmt = parseFloat(alloc.amount);
+        if (remainingPayment <= 0.005) break;
+        let allocAmt = parseFloat(alloc.amount);
         if (isNaN(allocAmt) || allocAmt <= 0) continue;
+        
+        allocAmt = Math.min(remainingPayment, allocAmt);
+        if (allocAmt <= 0.005) continue;
         
         const billCheck = await transaction.request()
           .input("MemberId", sql.UniqueIdentifier, memberId)
@@ -337,6 +341,8 @@ router.post("/pay", async (req, res) => {
               INSERT INTO CustomerCreditAllocations (PaymentTransactionId, InvoiceTransactionId, Amount)
               VALUES (@PaymentTransactionId, @InvoiceTransactionId, @AllocAmt)
             `);
+          
+          remainingPayment -= allocAmt;
         }
       }
     } else {
