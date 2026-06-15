@@ -92,6 +92,7 @@ export default function GeneralSettingsModal({
   const [enableCheckoutFlow, setEnableCheckoutFlow] = useState(settings.enableCheckoutFlow);
   const [enableDirectProcessToPay, setEnableDirectProcessToPay] = useState(settings.enableDirectProcessToPay);
   const [customerSideDisplay, setCustomerSideDisplay] = useState(settings.customerSideDisplay);
+  const [enableGuestDetailsPopup, setEnableGuestDetailsPopup] = useState(settings.enableGuestDetailsPopup);
 
   const handleToggleCheckoutFlow = (val: boolean) => {
     if (val) {
@@ -132,6 +133,7 @@ export default function GeneralSettingsModal({
       setEnableKDS(settings.enableKDS);
       setEnableCheckoutBill(settings.enableCheckoutBill);
       setCustomerSideDisplay(settings.customerSideDisplay);
+      setEnableGuestDetailsPopup(settings.enableGuestDetailsPopup !== undefined ? settings.enableGuestDetailsPopup : true);
       
       let initialCheckoutFlow = settings.enableCheckoutFlow;
       let initialDirectProcess = settings.enableDirectProcessToPay;
@@ -200,6 +202,7 @@ export default function GeneralSettingsModal({
       enableCheckoutFlow,
       enableDirectProcessToPay,
       customerSideDisplay,
+      enableGuestDetailsPopup,
     });
     
     setIsSaving(false);
@@ -336,6 +339,20 @@ export default function GeneralSettingsModal({
                 <Text style={styles.settingDesc}>Enable/disable secondary customer screen sync.</Text>
               </View>
               <CustomSwitch value={customerSideDisplay} onValueChange={setCustomerSideDisplay} />
+            </View>
+
+            {/* CARD 7: Guest Details Popup */}
+            <View style={[styles.settingCard, enableGuestDetailsPopup && styles.settingCardActive]}>
+              <View style={styles.cardLeft}>
+                <View style={styles.cardHeaderRow}>
+                  <View style={[styles.iconWrapper, enableGuestDetailsPopup ? styles.iconWrapperActive : styles.iconWrapperInactive]}>
+                    <Ionicons name="people-outline" size={16} color={enableGuestDetailsPopup ? Theme.primary : Theme.textSecondary} />
+                  </View>
+                  <Text style={styles.settingTitle}>Guest Details Popup</Text>
+                </View>
+                <Text style={styles.settingDesc}>Show guest info details popup before entering order screen.</Text>
+              </View>
+              <CustomSwitch value={enableGuestDetailsPopup} onValueChange={setEnableGuestDetailsPopup} />
             </View>
           </ScrollView>
 

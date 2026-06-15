@@ -416,6 +416,7 @@ export default function Category() {
   const canAccessReceiptSettings = useAuthStore((s: any) => s.canAccessReceiptSettings);
   const isWaiter = useAuthStore((s: any) => s.isWaiter);
   const enableKDS = useGeneralSettingsStore((s: any) => s.settings.enableKDS);
+  const enableGuestDetailsPopup = useGeneralSettingsStore((s: any) => s.settings.enableGuestDetailsPopup !== undefined ? s.settings.enableGuestDetailsPopup : true);
 
   // 🔔 Real-time sync now handled globally via useGlobalSocketSync
 
@@ -912,17 +913,23 @@ export default function Category() {
       }
 
       if (status === 0) {
-        // Intercept empty table tap to show Guest Name & Pax popup
-        setGuestNameInput("");
-        setGuestPaxInput("");
-        setPendingGuestItem(item);
-        setGuestModalVisible(true);
-        return;
+        if (enableGuestDetailsPopup) {
+          // Intercept empty table tap to show Guest Name & Pax popup
+          setGuestNameInput("");
+          setGuestPaxInput("");
+          setPendingGuestItem(item);
+          setGuestModalVisible(true);
+          return;
+        } else {
+          // Skip the popup completely and go directly to the order screen when a table is selected.
+          await proceedWithTable(item, tableData);
+          return;
+        }
       }
 
       await proceedWithTable(item, tableData);
     },
-    [activeTab, router, isWaiter],
+    [activeTab, router, isWaiter, enableGuestDetailsPopup],
   );
 
   const proceedWithTable = async (item: TableItem, tableData: any) => {
