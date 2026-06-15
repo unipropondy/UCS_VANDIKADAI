@@ -1273,7 +1273,11 @@ export default function ReceivablesScreen() {
                   )}
                 </View>
 
-                <TouchableOpacity style={styles.submitBtn} onPress={handleSaveCustomer} disabled={isSaving}>
+                <TouchableOpacity 
+                  style={[styles.submitBtn, isSaving && { opacity: 0.7 }]} 
+                  onPress={handleSaveCustomer} 
+                  disabled={isSaving}
+                >
                   {isSaving ? <ActivityIndicator color="#fff" /> : <Text style={styles.submitBtnText}>{modalMode === "EDIT" ? "Update Credit Limit" : "Add Customer"}</Text>}
                 </TouchableOpacity>
                 <View style={{ height: 40 }} />

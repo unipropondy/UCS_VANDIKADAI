@@ -27,30 +27,47 @@ router.post("/add", async (req, res) => {
   try {
     const pool = await poolPromise;
     const { name, phone, email, creditLimit, currentBalance, balance, address, isActive, userId } = req.body;
-    const result = await pool.request()
+
+    if (!name || !phone) {
+      return res.status(400).json({ error: "Name and Phone are required" });
+    }
+
+    const cleanPhone = String(phone).trim();
+
+    // Check for duplicate phone number
+    const dupCheck = await pool.request()
+      .input("Phone", sql.NVarChar, cleanPhone)
+      .query("SELECT CustomerId FROM CreditCustomerMaster WHERE Phone = @Phone");
+
+    if (dupCheck.recordset.length > 0) {
+      return res.status(400).json({ error: "A credit customer with this phone number already exists." });
+    }
+
+    const crypto = require("crypto");
+    const newId = crypto.randomUUID();
+    const safeUserId = toGuidOrNull(userId);
+
+    await pool.request()
+      .input("CustomerId", sql.UniqueIdentifier, newId)
       .input("Name", sql.NVarChar, name)
-      .input("Phone", sql.NVarChar, phone)
+      .input("Phone", sql.NVarChar, cleanPhone)
       .input("Email", sql.NVarChar, email || null)
       .input("Address", sql.NVarChar, address || null)
       .input("IsActive", sql.Bit, isActive !== undefined ? isActive : 1)
       .input("CreditLimit", sql.Decimal(18, 2), parseFloat(creditLimit) || 0)
       .input("CurrentBalance", sql.Decimal(18, 2), parseFloat(currentBalance) || 0)
       .input("Balance", sql.Decimal(18, 2), parseFloat(balance) || 0)
-      .input("CreatedBy", sql.UniqueIdentifier, userId || null)
       .query(`
-        DECLARE @newId UNIQUEIDENTIFIER = NEWID();
         INSERT INTO CreditCustomerMaster (CustomerId, Name, Phone, Email, Address, IsActive, CreditLimit, CurrentBalance, Balance)
-        VALUES (@newId, @Name, @Phone, @Email, @Address, @IsActive, @CreditLimit, @CurrentBalance, @Balance);
-        SELECT @newId AS CustomerId;
+        VALUES (@CustomerId, @Name, @Phone, @Email, @Address, @IsActive, @CreditLimit, @CurrentBalance, @Balance);
       `);
     
-    const customerId = result.recordset[0].CustomerId;
     res.json({
       success: true,
       member: {
-        MemberId: customerId,
+        MemberId: newId,
         Name: name,
-        Phone: phone,
+        Phone: cleanPhone,
         CreditLimit: parseFloat(creditLimit) || 0,
         CurrentBalance: parseFloat(currentBalance) || 0,
         IsActive: isActive !== undefined ? isActive : 1

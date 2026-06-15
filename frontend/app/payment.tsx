@@ -1854,20 +1854,22 @@ export default function PaymentScreen() {
                     /* SEARCH & LIST WORKFLOW */
                     <>
                       {/* Quick Add Toggle Button */}
-                      <TouchableOpacity 
-                        style={styles.quickAddToggleBtn} 
-                        onPress={() => {
-                          setIsQuickAddMode(true);
-                          if (memberQuery && isNaN(Number(memberQuery))) {
-                            setNewName(memberQuery);
-                          } else if (memberQuery) {
-                            setNewPhone(memberQuery);
-                          }
-                        }}
-                      >
-                        <Ionicons name="person-add" size={16} color={Theme.primary} />
-                        <Text style={styles.quickAddToggleText}>+ Quick Add New Customer</Text>
-                      </TouchableOpacity>
+                      {method.trim().toUpperCase() !== "MEMBER" && (
+                        <TouchableOpacity 
+                          style={styles.quickAddToggleBtn} 
+                          onPress={() => {
+                            setIsQuickAddMode(true);
+                            if (memberQuery && isNaN(Number(memberQuery))) {
+                              setNewName(memberQuery);
+                            } else if (memberQuery) {
+                              setNewPhone(memberQuery);
+                            }
+                          }}
+                        >
+                          <Ionicons name="person-add" size={16} color={Theme.primary} />
+                          <Text style={styles.quickAddToggleText}>+ Quick Add New Customer</Text>
+                        </TouchableOpacity>
+                      )}
 
                       {/* Search Bar */}
                       <View style={styles.searchBarBox}>
