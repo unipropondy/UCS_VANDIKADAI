@@ -157,7 +157,6 @@ const logoEmblem = () => ({
 // Top-colored border is rendered via pdfmake table hLineColor at row 0
 // so no hardcoded canvas width is needed.
 const kpiCard = (title, valueStr, trendStr, trendUp, borderColor, sparkBuf) => {
-  const arrow      = trendUp ? '\u25b2' : '\u25bc';
   const arrowColor = trendUp ? T.green  : T.red;
 
   return {
@@ -169,7 +168,24 @@ const kpiCard = (title, valueStr, trendStr, trendUp, borderColor, sparkBuf) => {
           { text: valueStr, fontSize: 14, bold: true, color: T.slate900, margin: [0, 0, 0, 4] },
           {
             columns: [
-              { text: `${arrow} ${trendStr}`, fontSize: 6.5, bold: true, color: arrowColor, width: '*' },
+              {
+                width: 'auto',
+                columns: [
+                  {
+                    canvas: trendUp
+                      ? [
+                          { type: 'polygon', points: [{x: 0, y: 4}, {x: 2.5, y: 0}, {x: 5, y: 4}], color: arrowColor }
+                        ]
+                      : [
+                          { type: 'polygon', points: [{x: 0, y: 0}, {x: 5, y: 0}, {x: 2.5, y: 4}], color: arrowColor }
+                        ],
+                    width: 6,
+                    margin: [0, 1.5, 2, 0]
+                  },
+                  { text: trendStr, fontSize: 6.5, bold: true, color: arrowColor }
+                ]
+              },
+              { text: '', width: '*' },
               sparkBuf
                 ? { image: bufToDataURL(sparkBuf), width: 48, height: 18, alignment: 'right' }
                 : { text: '' }
@@ -631,38 +647,33 @@ const generateSalesReportPdf = async (reportData) => {
   ];
 
   content.push({
-    columns: [
-      // Payment Summary Table
+    stack: [
+      sectionHeader('OPERATIONAL METRICS'),
       {
-        width: '57%',
-        stack: [
-          sectionHeader('PAYMENT SUMMARY'),
+        columns: [
           {
+            width: '48%',
             table: {
-              widths: ['*', 40, 70, 60],
-              body: payTableBody
+              widths: ['*', 'auto'],
+              body: opsData.slice(0, 4).map(([label, val, color], i) => [
+                { text: label, fontSize: 7, color: T.slate700, fillColor: i % 2 === 0 ? T.white : T.slate100, margin: [4,3,0,3], border: [false,false,false,false] },
+                { text: val,   fontSize: 7, bold: true, color, alignment: 'right', fillColor: i % 2 === 0 ? T.white : T.slate100, margin: [0,3,4,3], border: [false,false,false,false] }
+              ])
             },
             layout: {
               hLineWidth: (i, node) => (i === 0 || i === node.table.body.length) ? 1 : 0.5,
               vLineWidth: () => 0,
               hLineColor: () => T.slate200,
-              paddingLeft: () => 0,
-              paddingRight: () => 0,
-              paddingTop: () => 0,
-              paddingBottom: () => 0,
+              paddingLeft: () => 0, paddingRight: () => 0,
+              paddingTop: () => 0,  paddingBottom: () => 0,
             }
-          }
-        ]
-      },
-      // Operational Metrics
-      {
-        width: '43%',
-        stack: [
-          sectionHeader('OPERATIONAL METRICS'),
+          },
+          { text: '', width: '4%' },
           {
+            width: '48%',
             table: {
               widths: ['*', 'auto'],
-              body: opsData.map(([label, val, color], i) => [
+              body: opsData.slice(4).map(([label, val, color], i) => [
                 { text: label, fontSize: 7, color: T.slate700, fillColor: i % 2 === 0 ? T.white : T.slate100, margin: [4,3,0,3], border: [false,false,false,false] },
                 { text: val,   fontSize: 7, bold: true, color, alignment: 'right', fillColor: i % 2 === 0 ? T.white : T.slate100, margin: [0,3,4,3], border: [false,false,false,false] }
               ])
@@ -678,7 +689,6 @@ const generateSalesReportPdf = async (reportData) => {
         ]
       }
     ],
-    columnGap: 12,
     margin: [0, 0, 0, 0]
   });
 

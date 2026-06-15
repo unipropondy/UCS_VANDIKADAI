@@ -476,8 +476,7 @@ export default function SalesReport() {
         end.setMonth(end.getMonth() + 1);
         end.setDate(0);
       } else if (selectedFilter === "YEARLY") {
-        start.setMonth(0, 1);
-        end.setMonth(11, 31);
+        start.setFullYear(start.getFullYear() - 1);
       } else if (selectedFilter === "CUSTOM" && rangeStart && rangeEnd) {
         start.setTime(new Date(rangeStart).getTime());
         end.setTime(new Date(rangeEnd).getTime());
@@ -518,8 +517,7 @@ export default function SalesReport() {
         end.setMonth(end.getMonth() + 1);
         end.setDate(0);
       } else if (selectedFilter === "YEARLY") {
-        start.setMonth(0, 1);
-        end.setMonth(11, 31);
+        start.setFullYear(start.getFullYear() - 1);
       } else if (selectedFilter === "CUSTOM" && rangeStart && rangeEnd) {
         start.setTime(new Date(rangeStart).getTime());
         end.setTime(new Date(rangeEnd).getTime());
@@ -548,8 +546,7 @@ export default function SalesReport() {
       endObj.setMonth(endObj.getMonth() + 1);
       endObj.setDate(0);
     } else if (downloadFilter === "YEARLY") {
-      startObj.setMonth(0, 1);
-      endObj.setMonth(11, 31);
+      startObj.setFullYear(startObj.getFullYear() - 1);
     } else if (downloadFilter === "CUSTOM" && downloadRangeStart && downloadRangeEnd) {
       startObj.setTime(new Date(downloadRangeStart).getTime());
       endObj.setTime(new Date(downloadRangeEnd).getTime());
@@ -905,8 +902,11 @@ export default function SalesReport() {
       });
     } else if (selectedFilter === "YEARLY") {
       const parts = selectedDate.split("-");
-      const startStr = `${parts[0]}-01-01`;
-      const endStr = `${parts[0]}-12-31`;
+      const year = Number(parts[0]);
+      const month = Number(parts[1]);
+      const day = Number(parts[2]);
+      const startStr = `${year - 1}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+      const endStr = selectedDate;
 
       result = sales.filter((s) => {
         if (!s.SettlementDate) return false;

@@ -50,7 +50,7 @@ const getReportDateRange = (req) => {
     start.setDate(1);
     // end maintains today
   } else if (filter === "yearly") {
-    start.setMonth(0, 1);
+    start.setFullYear(start.getFullYear() - 1);
     // end maintains today
   }
   // Daily uses today's start/end
@@ -70,7 +70,7 @@ const getReportDateWhereSql = (filter = "daily", saleDateColumn = "sh.LastSettle
     case "monthly":
       return `MONTH(CAST(${saleDateColumn} AS DATETIME)) = MONTH(${safeTargetDate}) AND YEAR(CAST(${saleDateColumn} AS DATETIME)) = YEAR(${safeTargetDate})`;
     case "yearly":
-      return `YEAR(CAST(${saleDateColumn} AS DATETIME)) = YEAR(${safeTargetDate})`;
+      return `${saleDateColumn} >= DATEADD(YEAR, -1, CAST(${safeTargetDate} AS DATETIME)) AND ${saleDateColumn} < DATEADD(DAY, 1, CAST(${safeTargetDate} AS DATETIME))`;
     case "daily":
     default:
       const sgtStart = `CAST(${safeTargetDate} AS DATETIME)`;
