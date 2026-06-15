@@ -1,0 +1,11 @@
+node_modules/
+.expo/
+dist/
+android/app/build/
+android/.gradle/
+android/build/
+ios/build/
+.eas/
+.git/
+.gradle/
+build/
