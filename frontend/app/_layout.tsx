@@ -139,17 +139,23 @@ export default function RootLayout() {
     if (!user && isInsideApp) {
       // 1. Not logged in -> Go to Login
       router.replace("/login");
-    } else if (user && (!rootSegment || rootSegment === "login")) {
-      // 2. Already logged in -> Go to Role-Specific Dashboard
-      const role = user.role;
-      const userName = (user.userName || "").trim().toUpperCase();
+    } else if (user) {
+      if (user.userGroupId === "DFCF23EE-F6F4-4885-8D26-0056C657595F") {
+        if (rootSegment !== "sales-report") {
+          router.replace("/sales-report");
+        }
+      } else if (!rootSegment || rootSegment === "login") {
+        // 2. Already logged in -> Go to Role-Specific Dashboard
+        const role = user.role;
+        const userName = (user.userName || "").trim().toUpperCase();
 
-      if (userName === "KDS") {
-        router.replace("/kds" as any);
-      } else if (role === "WAITER") {
-        router.replace("/(tabs)/category"); // Waiter starts at Ordering
-      } else {
-        router.replace("/(tabs)/category"); // Others start at POS
+        if (userName === "KDS") {
+          router.replace("/kds" as any);
+        } else if (role === "WAITER") {
+          router.replace("/(tabs)/category"); // Waiter starts at Ordering
+        } else {
+          router.replace("/(tabs)/category"); // Others start at POS
+        }
       }
     }
   }, [user, segments, fontsLoaded]);

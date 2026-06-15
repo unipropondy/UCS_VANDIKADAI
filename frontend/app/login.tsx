@@ -65,7 +65,9 @@ export default function LoginScreen() {
           logout();
         } else {
           const userName = (user.userName || "").trim().toUpperCase();
-          if (userName === "KDS") {
+          if (user.userGroupId === "DFCF23EE-F6F4-4885-8D26-0056C657595F") {
+            router.replace("/sales-report");
+          } else if (userName === "KDS") {
             router.replace("/kds" as any);
           } else {
             router.replace("/(tabs)/category");
@@ -160,7 +162,9 @@ export default function LoginScreen() {
 
         // ✅ Role-Based Navigation
         const role = data.user.role;
-        if (role === "KDS") {
+        if (data.user.userGroupId === "DFCF23EE-F6F4-4885-8D26-0056C657595F") {
+          router.replace("/sales-report");
+        } else if (role === "KDS") {
           router.replace("/(tabs)/kds" as any);
         } else {
           router.replace("/(tabs)/category"); // Default for Admin, Manager, Waiter, Cashier

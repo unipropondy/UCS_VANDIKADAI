@@ -35,6 +35,7 @@ import UniversalPrinter from "../components/UniversalPrinter";
 import { Fonts } from "../constants/Fonts";
 import { Theme } from "../constants/theme";
 import { getSingaporeDateString } from "../utils/timezoneHelper";
+import { useAuthStore } from "../stores/authStore";
 
 type FilterType = "DAILY" | "WEEKLY" | "MONTHLY" | "YEARLY" | "CUSTOM";
 type DetailReportType = "CATEGORY" | "DISH" | "SETTLEMENT" | "ARTIST_TARGET";
@@ -152,6 +153,9 @@ function hexToRgba(hex: string, alpha: number): string {
 export default function SalesReport() {
   const router = useRouter();
   const { showToast } = useToast();
+  const user = useAuthStore((state) => state.user);
+  const logout = useAuthStore((state) => state.logout);
+  const isSalesReportUser = user?.userGroupId === "DFCF23EE-F6F4-4885-8D26-0056C657595F";
   const { width: SCREEN_W } = useWindowDimensions();
   const [sales, setSales] = useState<any[]>([]);
   const [dbPaymentModes, setDbPaymentModes] = useState<any[]>([
@@ -1899,9 +1903,15 @@ export default function SalesReport() {
     <>
       {/* Dashboard Header moved here for better scroll integration */}
       <View style={styles.dashboardHeader}>
-        <TouchableOpacity onPress={() => router.replace("/(tabs)/category" as any)} style={styles.backBtn}>
-          <Ionicons name="arrow-back" size={20} color={Theme.textPrimary} />
-        </TouchableOpacity>
+        {isSalesReportUser ? (
+          <TouchableOpacity onPress={() => logout()} style={styles.backBtn}>
+            <Ionicons name="log-out" size={20} color={Theme.danger} />
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity onPress={() => router.replace("/(tabs)/category" as any)} style={styles.backBtn}>
+            <Ionicons name="arrow-back" size={20} color={Theme.textPrimary} />
+          </TouchableOpacity>
+        )}
         <View style={styles.headerContent}>
           <Text style={styles.dashboardYear}>{new Date().getFullYear()}</Text>
           <Text style={styles.dashboardTitle}>SALES ANALYTICS 📊</Text>

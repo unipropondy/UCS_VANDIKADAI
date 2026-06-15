@@ -12,6 +12,9 @@ export default function Index() {
     }
 
     const userName = (user.userName || "").trim().toUpperCase();
+    if (user.userGroupId === "DFCF23EE-F6F4-4885-8D26-0056C657595F") {
+      return <Redirect href="/sales-report" />;
+    }
     if (userName === "KDS") {
       return <Redirect href="/(tabs)/kds" />;
     }
