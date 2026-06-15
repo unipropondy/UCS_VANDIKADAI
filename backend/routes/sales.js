@@ -58,9 +58,13 @@ const getReportDateRange = (req) => {
   return { start, end };
 };
 
-const getReportDateWhereSql = (filter = "daily", saleDateColumn = "sh.LastSettlementDate", date = null) => {
+const getReportDateWhereSql = (filter = "daily", saleDateColumn = "sh.LastSettlementDate", date = null, startDate = null, endDate = null) => {
   // Completely for Singapore timezone (SGT, UTC+8).
   // Database stores local SGT timestamps natively (via GETDATE() or local server time).
+  if (String(filter).toLowerCase() === "custom" && startDate && endDate) {
+    return getReportDateWhereSqlForRange(startDate, endDate, saleDateColumn);
+  }
+
   const targetDate = date ? `'${date}'` : 'GETDATE()';
   const safeTargetDate = `CAST(CAST(${targetDate} AS DATETIME) AS DATE)`;
 
@@ -642,11 +646,12 @@ router.get("/category", async (req, res) => {
   try {
     res.set("Cache-Control", "no-store");
     const pool = await poolPromise;
-    const filter = normalizeReportFilter(req.query.filter);
+    const filter = req.query.filter || "daily";
     const date = req.query.date;
-    const appDateWhereSql = await getReportDateWhereSql(filter, "sh.LastSettlementDate", date);
-    const legacyDateWhereSql = await getReportDateWhereSql(filter, "InvoiceDate", date);
-    console.log(`[REPORT API] type=category filter=${filter} date=${date || 'today'}`);
+    const { startDate, endDate } = req.query;
+    const appDateWhereSql = await getReportDateWhereSql(filter, "sh.LastSettlementDate", date, startDate, endDate);
+    const legacyDateWhereSql = await getReportDateWhereSql(filter, "InvoiceDate", date, startDate, endDate);
+    console.log(`[REPORT API] type=category filter=${filter} date=${date || 'today'} range=${startDate || ''}..${endDate || ''}`);
 
     const result = await pool.request().query(`
         WITH AppReport AS (
@@ -718,11 +723,12 @@ router.get("/dish", async (req, res) => {
   try {
     res.set("Cache-Control", "no-store");
     const pool = await poolPromise;
-    const filter = normalizeReportFilter(req.query.filter);
+    const filter = req.query.filter || "daily";
     const date = req.query.date;
-    const appDateWhereSql = await getReportDateWhereSql(filter, "sh.LastSettlementDate", date);
-    const legacyDateWhereSql = await getReportDateWhereSql(filter, "InvoiceDate", date);
-    console.log(`[REPORT API] type=dish filter=${filter} date=${date || 'today'}`);
+    const { startDate, endDate } = req.query;
+    const appDateWhereSql = await getReportDateWhereSql(filter, "sh.LastSettlementDate", date, startDate, endDate);
+    const legacyDateWhereSql = await getReportDateWhereSql(filter, "InvoiceDate", date, startDate, endDate);
+    console.log(`[REPORT API] type=dish filter=${filter} date=${date || 'today'} range=${startDate || ''}..${endDate || ''}`);
 
     const result = await pool.request().query(`
         WITH AppReport AS (
@@ -796,6 +802,74 @@ router.get("/dish", async (req, res) => {
     res.json(result.recordset || []);
   } catch (err) {
     console.error("[REPORT API] dish error:", err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.get("/settlement", async (req, res) => {
+  try {
+    res.set("Cache-Control", "no-store");
+    const pool = await poolPromise;
+    const filter = req.query.filter || "daily";
+    const date = req.query.date;
+    const { startDate, endDate } = req.query;
+
+    const appDateWhereSql = await getReportDateWhereSql(filter, "sh.LastSettlementDate", date, startDate, endDate);
+    
+    const result = await pool.request().query(`
+      WITH StandardSettlements AS (
+        SELECT 
+          UPPER(ISNULL(
+            (SELECT TOP 1 LTRIM(RTRIM(pm.Description)) 
+             FROM Paymode pm 
+             WHERE LTRIM(RTRIM(pm.PayMode)) = LTRIM(RTRIM(sd.Paymode)) 
+                OR LTRIM(RTRIM(pm.Description)) = LTRIM(RTRIM(sd.Paymode))
+                OR CAST(pm.Position AS NVARCHAR(10)) = LTRIM(RTRIM(sd.Paymode))
+            ), 
+            CASE 
+              WHEN LTRIM(RTRIM(sd.Paymode)) = '2' THEN 'NETS'
+              WHEN LTRIM(RTRIM(sd.Paymode)) = '3' THEN 'PAYNOW'
+              WHEN LTRIM(RTRIM(sd.Paymode)) = '4' THEN 'UPI'
+              ELSE ISNULL(sd.Paymode, 'CASH')
+            END
+          )) as Paymode,
+          SUM(ISNULL(sd.SysAmount, 0)) as SysAmount,
+          SUM(ISNULL(sd.ManualAmount, 0)) as ManualAmount,
+          SUM(ISNULL(sd.SortageOrExces, 0)) as SortageOrExces,
+          CAST(SUM(ISNULL(sd.ReceiptCount, 0)) AS INT) as ReceiptCount
+        FROM SettlementHeader sh
+        INNER JOIN SettlementDetail sd ON sh.SettlementID = sd.SettlementId
+        WHERE ${appDateWhereSql}
+        GROUP BY sd.Paymode
+      ),
+      LedgerPayments AS (
+        SELECT 
+          CASE WHEN mm.MemberId IS NOT NULL THEN 'MEMBER' ELSE 'CREDIT' END + ' PAYMENT (' + UPPER(ISNULL(pm.Description, 'CASH')) + ')' AS Paymode,
+          SUM(ptd.Amount) AS SysAmount,
+          SUM(ptd.Amount) AS ManualAmount,
+          0 AS SortageOrExces,
+          COUNT(*) AS ReceiptCount
+        FROM PaymentTransactionDetails ptd
+        INNER JOIN Paymode pm ON pm.Position = ptd.PayModeId
+        LEFT JOIN MemberMaster mm ON ptd.ReferenceId = mm.MemberId
+        WHERE ptd.ReferenceType = 'MEMBER'
+          AND ${appDateWhereSql.replace(/sh\.LastSettlementDate/g, 'ptd.CreatedDate')}
+        GROUP BY mm.MemberId, pm.Description
+      )
+      SELECT Paymode, SUM(SysAmount) as SysAmount, SUM(ManualAmount) as ManualAmount, SUM(SortageOrExces) as SortageOrExces, SUM(ReceiptCount) as ReceiptCount
+      FROM (
+        SELECT Paymode, SysAmount, ManualAmount, SortageOrExces, ReceiptCount FROM StandardSettlements
+        UNION ALL
+        SELECT Paymode, SysAmount, ManualAmount, SortageOrExces, ReceiptCount FROM LedgerPayments
+      ) Combined
+      GROUP BY Paymode
+      ORDER BY SysAmount DESC
+    `);
+
+    console.log(`[REPORT API] type=settlement filter=${filter} rows=${result.recordset.length}`);
+    res.json(result.recordset || []);
+  } catch (err) {
+    console.error("[REPORT API] settlement error:", err.message);
     res.status(500).json({ error: err.message });
   }
 });

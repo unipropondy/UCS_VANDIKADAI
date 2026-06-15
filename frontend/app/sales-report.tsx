@@ -34,7 +34,7 @@ import TransactionCard from "../components/TransactionCard";
 import UniversalPrinter from "../components/UniversalPrinter";
 import { Fonts } from "../constants/Fonts";
 import { Theme } from "../constants/theme";
-import { getSingaporeDateString } from "../utils/timezoneHelper";
+import { getSingaporeDateString, parseDatabaseDate } from "../utils/timezoneHelper";
 import { useAuthStore } from "../stores/authStore";
 
 type FilterType = "DAILY" | "WEEKLY" | "MONTHLY" | "YEARLY" | "CUSTOM";
@@ -342,6 +342,10 @@ export default function SalesReport() {
           date: selectedDate,
           t: Date.now().toString(),
         });
+        if (filterType === "CUSTOM" && rangeStart && rangeEnd) {
+          params.append("startDate", rangeStart);
+          params.append("endDate", rangeEnd);
+        }
 
         const endpoint =
           reportType === "CATEGORY"
@@ -470,13 +474,19 @@ export default function SalesReport() {
 
   const fetchSales = async () => {
     try {
-      const end = new Date(selectedDate);
-      const start = new Date(selectedDate);
+      let startStr = selectedDate;
+      let endStr = selectedDate;
 
       if (selectedFilter === "WEEKLY") {
+        const start = new Date(selectedDate);
         start.setDate(start.getDate() - 6);
+        startStr = getSingaporeDateString(start);
       } else if (selectedFilter === "MONTHLY") {
+        const start = new Date(selectedDate);
         start.setDate(1);
+        startStr = getSingaporeDateString(start);
+        
+        const end = new Date(selectedDate);
         const today = new Date();
         const endOfMonth = new Date(end.getFullYear(), end.getMonth() + 1, 0);
         if (endOfMonth > today) {
@@ -484,15 +494,15 @@ export default function SalesReport() {
         } else {
           end.setTime(endOfMonth.getTime());
         }
+        endStr = getSingaporeDateString(end);
       } else if (selectedFilter === "YEARLY") {
+        const start = new Date(selectedDate);
         start.setFullYear(start.getFullYear() - 1);
+        startStr = getSingaporeDateString(start);
       } else if (selectedFilter === "CUSTOM" && rangeStart && rangeEnd) {
-        start.setTime(new Date(rangeStart).getTime());
-        end.setTime(new Date(rangeEnd).getTime());
+        startStr = rangeStart;
+        endStr = rangeEnd;
       }
-
-      const startStr = getSingaporeDateString(start);
-      const endStr = getSingaporeDateString(end);
 
       const response = await fetch(`${API_URL}/api/sales/all?startDate=${startStr}&endDate=${endStr}`, {
         headers: { "Content-Type": "application/json" },
@@ -516,13 +526,19 @@ export default function SalesReport() {
 
   const fetchSummary = async () => {
     try {
-      const end = new Date(selectedDate);
-      const start = new Date(selectedDate);
+      let startStr = selectedDate;
+      let endStr = selectedDate;
 
       if (selectedFilter === "WEEKLY") {
+        const start = new Date(selectedDate);
         start.setDate(start.getDate() - 6);
+        startStr = getSingaporeDateString(start);
       } else if (selectedFilter === "MONTHLY") {
+        const start = new Date(selectedDate);
         start.setDate(1);
+        startStr = getSingaporeDateString(start);
+        
+        const end = new Date(selectedDate);
         const today = new Date();
         const endOfMonth = new Date(end.getFullYear(), end.getMonth() + 1, 0);
         if (endOfMonth > today) {
@@ -530,15 +546,15 @@ export default function SalesReport() {
         } else {
           end.setTime(endOfMonth.getTime());
         }
+        endStr = getSingaporeDateString(end);
       } else if (selectedFilter === "YEARLY") {
+        const start = new Date(selectedDate);
         start.setFullYear(start.getFullYear() - 1);
+        startStr = getSingaporeDateString(start);
       } else if (selectedFilter === "CUSTOM" && rangeStart && rangeEnd) {
-        start.setTime(new Date(rangeStart).getTime());
-        end.setTime(new Date(rangeEnd).getTime());
+        startStr = rangeStart;
+        endStr = rangeEnd;
       }
-
-      const startStr = getSingaporeDateString(start);
-      const endStr = getSingaporeDateString(end);
       const url = `${API_URL}/api/sales/range?startDate=${startStr}&endDate=${endStr}`;
       const response = await fetch(url);
       const data = await response.json();
@@ -856,7 +872,7 @@ export default function SalesReport() {
     if (rawId.includes("-") || !/^\d+$/.test(rawId)) return rawId;
 
     const d = order.SettlementDate
-      ? new Date(order.SettlementDate)
+      ? parseDatabaseDate(order.SettlementDate)
       : new Date();
     const datePart =
       d.getFullYear().toString() +
@@ -883,7 +899,7 @@ export default function SalesReport() {
     if (selectedFilter === "DAILY") {
       result = sales.filter((s) => {
         if (!s.SettlementDate) return false;
-        const itemDate = getSingaporeDateString(new Date(s.SettlementDate));
+        const itemDate = getSingaporeDateString(parseDatabaseDate(s.SettlementDate));
         return itemDate === selectedDate;
       });
     } else if (selectedFilter === "WEEKLY") {
@@ -902,7 +918,7 @@ export default function SalesReport() {
 
       result = sales.filter((s) => {
         if (!s.SettlementDate) return false;
-        const saleDateStr = getSingaporeDateString(new Date(s.SettlementDate));
+        const saleDateStr = getSingaporeDateString(parseDatabaseDate(s.SettlementDate));
         return saleDateStr >= startStr && saleDateStr <= endStr;
       });
     } else if (selectedFilter === "MONTHLY") {
@@ -916,7 +932,7 @@ export default function SalesReport() {
 
       result = sales.filter((s) => {
         if (!s.SettlementDate) return false;
-        const saleDateStr = getSingaporeDateString(new Date(s.SettlementDate));
+        const saleDateStr = getSingaporeDateString(parseDatabaseDate(s.SettlementDate));
         return saleDateStr >= startStr && saleDateStr <= endStr;
       });
     } else if (selectedFilter === "YEARLY") {
@@ -929,13 +945,13 @@ export default function SalesReport() {
 
       result = sales.filter((s) => {
         if (!s.SettlementDate) return false;
-        const saleDateStr = getSingaporeDateString(new Date(s.SettlementDate));
+        const saleDateStr = getSingaporeDateString(parseDatabaseDate(s.SettlementDate));
         return saleDateStr >= startStr && saleDateStr <= endStr;
       });
     } else if (selectedFilter === "CUSTOM" && rangeStart && rangeEnd) {
       result = sales.filter((s) => {
         if (!s.SettlementDate) return false;
-        const saleDateStr = getSingaporeDateString(new Date(s.SettlementDate));
+        const saleDateStr = getSingaporeDateString(parseDatabaseDate(s.SettlementDate));
         return saleDateStr >= rangeStart && saleDateStr <= rangeEnd;
       });
     }
@@ -1620,7 +1636,7 @@ export default function SalesReport() {
                           { textAlign: "center" }
                         ]}
                       >
-                        {row.FromDate ? new Date(row.FromDate).toLocaleDateString("en-GB") : "N/A"}
+                        {row.FromDate ? parseDatabaseDate(row.FromDate).toLocaleDateString("en-GB") : "N/A"}
                       </Text>
                       <Text
                         style={[
@@ -1630,7 +1646,7 @@ export default function SalesReport() {
                           { textAlign: "center" }
                         ]}
                       >
-                        {row.ToDate ? new Date(row.ToDate).toLocaleDateString("en-GB") : "N/A"}
+                        {row.ToDate ? parseDatabaseDate(row.ToDate).toLocaleDateString("en-GB") : "N/A"}
                       </Text>
                       <Text
                         style={[
@@ -2664,7 +2680,7 @@ export default function SalesReport() {
                       }}
                     >
                       <Text style={[styles.modalSub, { fontSize: 10 }]}>
-                        {new Date(
+                        {parseDatabaseDate(
                           selectedOrder?.SettlementDate,
                         ).toLocaleString()}
                       </Text>
@@ -2781,7 +2797,7 @@ export default function SalesReport() {
                     </View>
                     <View style={styles.cancelledDetailRow}>
                       <Text style={styles.cancelledDetailText}>By: {selectedOrder.CancelledByUserName || "SYSTEM"}</Text>
-                      <Text style={styles.cancelledDetailText}>Date: {selectedOrder.CancelledDate ? new Date(selectedOrder.CancelledDate).toLocaleString() : "N/A"}</Text>
+                      <Text style={styles.cancelledDetailText}>Date: {selectedOrder.CancelledDate ? parseDatabaseDate(selectedOrder.CancelledDate).toLocaleString() : "N/A"}</Text>
                     </View>
                   </View>
                 ) : null}

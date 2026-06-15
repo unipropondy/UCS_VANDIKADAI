@@ -17,7 +17,7 @@ export function formatToSingaporeDate(
   options: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'short' }
 ): string {
   if (!dateInput) return "";
-  const date = typeof dateInput === 'string' || typeof dateInput === 'number' ? new Date(dateInput) : dateInput;
+  const date = parseDatabaseDate(dateInput);
   if (isNaN(date.getTime())) return "";
   return new Intl.DateTimeFormat('en-US', {
     timeZone: 'Asia/Singapore',
@@ -30,7 +30,7 @@ export function formatToSingaporeTime(
   options: Intl.DateTimeFormatOptions = { hour: '2-digit', minute: '2-digit', hour12: true }
 ): string {
   if (!dateInput) return "";
-  const date = typeof dateInput === 'string' || typeof dateInput === 'number' ? new Date(dateInput) : dateInput;
+  const date = parseDatabaseDate(dateInput);
   if (isNaN(date.getTime())) return "";
   return new Intl.DateTimeFormat('en-US', {
     timeZone: 'Asia/Singapore',
@@ -40,7 +40,7 @@ export function formatToSingaporeTime(
 
 export function formatToSingaporeDateTime(dateInput: Date | string | number): string {
   if (!dateInput) return "";
-  const date = typeof dateInput === 'string' || typeof dateInput === 'number' ? new Date(dateInput) : dateInput;
+  const date = parseDatabaseDate(dateInput);
   if (isNaN(date.getTime())) return "";
   const dateStr = formatToSingaporeDate(date, { day: 'numeric', month: 'short' });
   const timeStr = formatToSingaporeTime(date, { hour: '2-digit', minute: '2-digit', hour12: true });
@@ -77,3 +77,27 @@ export function getSingaporeTimeTodayRange(): { from: Date; to: Date } {
   const to = new Date(nowSgt);
   return { from, to };
 }
+
+export function parseDatabaseDate(dateInput: Date | string | number): Date {
+  if (!dateInput) return new Date();
+  if (dateInput instanceof Date) return dateInput;
+  if (typeof dateInput === 'number') return new Date(dateInput);
+
+  let str = String(dateInput).trim();
+  if (str.endsWith('Z')) {
+    str = str.slice(0, -1) + '+08:00';
+  } else if (str.endsWith('+00:00')) {
+    str = str.slice(0, -6) + '+08:00';
+  } else if (!str.includes('+') && !str.includes('-') && str.includes('T')) {
+    str = str + '+08:00';
+  } else if (!str.includes('T') && str.includes(' ')) {
+    str = str.replace(' ', 'T') + '+08:00';
+  }
+
+  const parsed = new Date(str);
+  if (isNaN(parsed.getTime())) {
+    return new Date(dateInput);
+  }
+  return parsed;
+}
+
