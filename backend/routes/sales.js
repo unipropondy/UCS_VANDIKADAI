@@ -9,6 +9,17 @@ const { getBusinessDaySqlBounds } = require("../utils/timezoneHelper");
 const { getBusinessTimezoneSettings, getCompanySettings } = require("../utils/settingsCache");
 const { sendBalanceNotification } = require("../utils/whatsappService");
 
+class DuplicateCheckoutError extends Error {
+  constructor(settlementId, billNo) {
+    super("Duplicate checkout detected");
+    this.name = "DuplicateCheckoutError";
+    this.isDuplicateCheckout = true;
+    this.settlementId = settlementId;
+    this.billNo = billNo;
+  }
+}
+
+
 
 // Helper to generate a random 8-character hex ID (e.g. A996E780)
 const generateRandomBillId = () => {
@@ -1307,6 +1318,37 @@ router.post("/save", async (req, res) => {
         const settlementIdResult = await transaction.request().query(`SELECT NEWID() AS id`);
         settlementId = settlementIdResult.recordset[0].id;
       }
+
+      // 1.5 Concurrency Lock and Duplicate Recheck inside transaction
+      if (orderId && !isSplit) {
+        await transaction.request()
+          .input("OrderId", sql.NVarChar(100), orderId)
+          .query(`
+            SELECT OrderId 
+            FROM RestaurantOrderCur WITH (UPDLOCK, HOLDLOCK) 
+            WHERE OrderNumber = @OrderId 
+               OR (TRY_CAST(@OrderId AS UNIQUEIDENTIFIER) IS NOT NULL AND OrderId = TRY_CAST(@OrderId AS UNIQUEIDENTIFIER))
+          `);
+
+        const innerCheck = await transaction.request()
+          .input("OrderId", sql.NVarChar(100), orderId)
+          .query(`
+            SELECT TOP 1 sh.SettlementID, sh.BillNo 
+            FROM SettlementHeader sh WITH (HOLDLOCK)
+            LEFT JOIN RestaurantInvoice ri WITH (HOLDLOCK) ON sh.SettlementID = ri.RestaurantBillId
+            WHERE sh.BillNo = @OrderId 
+               OR (TRY_CAST(@OrderId AS UNIQUEIDENTIFIER) IS NOT NULL AND ri.OrderId = TRY_CAST(@OrderId AS UNIQUEIDENTIFIER))
+               OR ri.OrderId = (SELECT TOP 1 OrderId FROM RestaurantOrder WHERE OrderNumber = @OrderId)
+               OR ri.OrderId = (SELECT TOP 1 OrderId FROM RestaurantOrderCur WHERE OrderNumber = @OrderId)
+          `);
+
+        if (innerCheck.recordset.length > 0) {
+          const existing = innerCheck.recordset[0];
+          console.log(`[SAVE SALE] Inner duplicate check matched by OrderId! Settlement already exists for order ${orderId}. BillNo: ${existing.BillNo}`);
+          throw new DuplicateCheckoutError(existing.SettlementID, existing.BillNo);
+        }
+      }
+
       let billNo = ""; // Will be set to displayOrderId later
 
       const paymodesRes = await transaction.request().query("SELECT Position, PayMode FROM [dbo].[Paymode] WHERE Active = 1");
@@ -2255,6 +2297,10 @@ router.post("/save", async (req, res) => {
 
     res.json({ success: true, settlementId, billNo: displayOrderId, orderId: displayOrderId });
   } catch (err) {
+    if (err.isDuplicateCheckout) {
+      console.log(`[SAVE SALE] Returning existing settlement for duplicate checkout: ${err.settlementId}`);
+      return res.json({ success: true, settlementId: err.settlementId, billNo: err.billNo, orderId: err.billNo });
+    }
     console.error("SAVE SALE ERROR:", err);
     res.status(500).json({ success: false, error: err.message });
   }
