@@ -1518,7 +1518,7 @@ export default function SalesReport() {
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={{ minWidth: "100%" }}
           >
-            <View style={[styles.reportTable, isArtistTarget && { minWidth: 700 }]}>
+            <View style={[styles.reportTable, isArtistTarget && { minWidth: 700 }, isDishReport && { minWidth: 600 }]}>
               <View style={styles.reportTableHeader}>
                 <Text style={[styles.reportCell, styles.snoCell]}>S/N</Text>
                 {isSettlement ? (
@@ -1573,6 +1573,17 @@ export default function SalesReport() {
                     >
                       {isDishReport ? "Item" : "Category"}
                     </Text>
+
+                    {isDishReport && (
+                      <Text
+                        style={[
+                          styles.reportCell,
+                          styles.categoryNameCell,
+                        ]}
+                      >
+                        Category
+                      </Text>
+                    )}
 
                     <Text
                       style={[
@@ -1814,6 +1825,17 @@ export default function SalesReport() {
                           style={[
                             styles.reportCell,
                             styles.reportCellText,
+                            styles.categoryNameCell,
+                            { fontFamily: Fonts.black, fontSize: 13, color: Theme.textMuted },
+                          ]}
+                        >
+                          -
+                        </Text>
+
+                        <Text
+                          style={[
+                            styles.reportCell,
+                            styles.reportCellText,
                             styles.qtyCell,
                             { fontFamily: Fonts.black, fontSize: 13, color: Theme.textPrimary },
                           ]}
@@ -1870,6 +1892,17 @@ export default function SalesReport() {
                               ]}
                             >
                               {row.DishName}
+                            </Text>
+
+                            <Text
+                              numberOfLines={1}
+                              style={[
+                                styles.reportCell,
+                                styles.reportCellText,
+                                styles.categoryNameCell,
+                              ]}
+                            >
+                              {row.SubCategoryName}
                             </Text>
 
                             <Text
