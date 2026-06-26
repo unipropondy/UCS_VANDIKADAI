@@ -1,3 +1,26 @@
-export const API_URL = process.env.EXPO_PUBLIC_API_URL || "https://ucsvandikadai-production.up.railway.app";
+import Constants from "expo-constants";
+import { Platform } from "react-native";
 
-console.log(`🌐 [Config] API_URL: ${API_URL} | Platform: ${require('react-native').Platform.OS} | Env: ${process.env.NODE_ENV}`);
+const getLocalBackendIP = (): string => {
+  if (Platform.OS === "web" && typeof window !== "undefined") {
+    return window.location.hostname;
+  }
+
+  const hostUri =
+    Constants.expoConfig?.hostUri ?? Constants.manifest?.debuggerHost;
+
+  if (hostUri) {
+    return hostUri.split(":")[0];
+  }
+
+  return "localhost";
+};
+
+const localIP = getLocalBackendIP();
+
+export const API_URL = __DEV__
+  ? `http://${localIP}:3000`
+  : (process.env.EXPO_PUBLIC_API_URL ??
+    "https://ucsvandikadai-production.up.railway.app");
+
+console.log(`🌐 [Config] API_URL: ${API_URL} | Platform: ${Platform.OS} | Env: ${process.env.NODE_ENV}`);
